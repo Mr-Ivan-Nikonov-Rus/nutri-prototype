@@ -1,4 +1,3 @@
-
 name: NUTRI E2E QA
 
 on:
@@ -19,6 +18,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Prepare E2E test layout
+        run: |
+          mkdir -p tests
+          if [ -f nutri.spec.js ] && [ ! -f tests/nutri.spec.js ]; then
+            cp nutri.spec.js tests/nutri.spec.js
+          fi
+          if [ -f serve.mjs ] && [ ! -f tests/serve.mjs ]; then
+            cp serve.mjs tests/serve.mjs
+          fi
+          test -f tests/nutri.spec.js
+          test -f tests/serve.mjs
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Install browsers
@@ -34,4 +44,3 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 14
-
