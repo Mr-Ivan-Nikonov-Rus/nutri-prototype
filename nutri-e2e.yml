@@ -1,0 +1,35 @@
+name: NUTRI E2E QA
+
+on:
+  push:
+    branches: [main, 'qa/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E scenarios
+        run: npm test
+      - name: Attach failure artifacts and HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nutri-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
