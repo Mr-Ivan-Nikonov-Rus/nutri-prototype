@@ -60,7 +60,7 @@ async function createManualMeal(page, { date, name = 'QA-приём пищи', s
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => Boolean(window.NUTRI_QA))).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA.appVersion)).toBe('19.3.1');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA.appVersion)).toBe('19.4.0');
 });
 
 test('@smoke fresh launch: clean diary, correct version, working navigation', async ({ page }) => {
@@ -338,4 +338,35 @@ test('text backup import normalizes missing goalHistory before editing goals', a
   await page.locator('[data-act="plan"]').click();
   await page.locator('#goalForm button[type="submit"]').click();
   expect((await qa(page, 'state')).goalHistory).toHaveLength(1);
+});
+
+
+test('v19.4 overview preserves all five scales and the full balance gauge', async ({ page }) => {
+  await expect(page.locator('.today .gauge svg')).toBeVisible();
+  await expect(page.locator('.today .macro-list .macro')).toHaveCount(5);
+  await expect(page.locator('.today .macro-list .bar')).toHaveCount(5);
+  await page.locator('[data-act="segment"][data-val="vitamins"]').click();
+  await expect(page.locator('.today .macro-list .macro')).toHaveCount(5);
+  await expect(page.locator('.today .macro-list .bar')).toHaveCount(5);
+  await page.locator('[data-act="segment"][data-val="minerals"]').click();
+  await expect(page.locator('.today .macro-list .macro')).toHaveCount(5);
+  await expect(page.locator('.today .macro-list .bar')).toHaveCount(5);
+  await page.locator('[data-act="segment"][data-val="macros"]').click();
+  await expect(page.locator('[data-act="nutrientDetail"][data-id="saturated_fat_g"]')).toHaveAttribute('aria-label', /верхний лимит, не цель/);
+});
+
+test('v19.4 product sources and accessible scrubbing update detail correctly', async ({ page }) => {
+  await addCatalogProduct(page, { meal: 'breakfast' });
+  await addCatalogProduct(page, { meal: 'lunch' });
+  await tab(page, 'today');
+  await page.locator('[data-act="nutrientDetail"][data-id="protein_g"]').click();
+  await expect(page.locator('.contribution-explorer')).toBeVisible();
+  await expect(page.locator('.contribution-row')).toHaveCount(2);
+  await expect(page.locator('.contribution-slider')).toHaveAttribute('aria-label', /вклад продуктов/);
+  const original = await page.locator('.contribution-tooltip').innerText();
+  expect(original).toContain('50%');
+  await page.locator('.contribution-slider').evaluate(el => { el.value='90'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+  await expect(page.locator('.contribution-row').nth(1)).toHaveAttribute('aria-pressed','true');
+  await page.locator('.contribution-row').first().click();
+  await expect(page.locator('.contribution-row').first()).toHaveAttribute('aria-pressed','true');
 });
