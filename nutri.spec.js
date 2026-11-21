@@ -124,6 +124,9 @@ test('consumed food persists and can be deleted and undone',async({page})=>{
   const orig=(await state(page)).entries[0];
   await page.reload();await expect.poll(()=>page.evaluate(()=>!!window.NUTRI_QA)).toBe(true);
   expect((await state(page)).entries[0].id).toBe(orig.id);
+  // After a full reload the app restores the Overview route; meal controls live on Nutrition.
+  await go(page, 'nutrition');
+  await page.locator('[data-change="diaryDate"]').fill(d(-2));
   await page.locator('[data-act="meal"][data-meal="breakfast"]').click();
   await page.locator(`[data-act="deleteEntry"][data-id="${orig.id}"]`).click();
   expect((await state(page)).entries).toHaveLength(0);
@@ -148,7 +151,8 @@ test('manual recipe creates an entry with ingredient mass and saved variant',asy
 
 test('different food diary periods show graphs with no fabricated empty zeros',async({page})=>{
   await go(page,'progress');
-  for(const n of ['7','28','90','0']){
+  // R12 uses calendar month (30 days) rather than the legacy 28-day quick filter.
+  for(const n of ['7','30','90','0']){
     await page.locator(`[data-act="period"][data-num="${n}"]`).click();
     await expect(page.locator('.progress-plot')).toBeVisible();
   }
