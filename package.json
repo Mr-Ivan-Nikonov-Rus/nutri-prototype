@@ -1,7 +1,7 @@
 {
   "name": "nutri-prototype-qa",
   "private": true,
-  "version": "19.4.0",
+  "version": "19.7.0",
   "type": "module",
   "scripts": {
     "test": "playwright test",
