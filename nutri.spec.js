@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.1.1 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.2.0 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.1-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.2.0-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -202,4 +202,21 @@ test('profile shares only the public NUTRI link', async ({page}) => {
   await expect.poll(() => page.evaluate(() => window.shareCalls)).toEqual([
     { title: 'NUTRI', url: 'https://nutri-prototype.onrender.com/' },
   ]);
+});
+
+test('past recommendations lead with a diary observation and link to dish contributions', async ({page}) => {
+  const date = d(-2);
+  await page.evaluate(({key, date}) => {
+    const data = JSON.parse(localStorage.getItem(key));
+    data.entries.push({id:'recommendation-fat', date, meal:'lunch', time:'12:00', name:'Блюдо QA',
+      kind:'manual', status:'consumed', grams:200, macros:{kcal:900,p:10,f:95,c:2,fiber:0}});
+    localStorage.setItem(key, JSON.stringify(data));
+  }, {key: STORE, date});
+  await page.reload();
+  await page.getByRole('textbox', {name:'Выбрать дату обзора'}).fill(date);
+  await page.getByRole('button', {name:'Все рекомендации'}).click();
+  await expect(page.getByRole('region', {name:'Главное наблюдение'})).toContainText('Жиров больше, чем в плане');
+  await expect(page.getByRole('heading', {name:'Следующий приём пищи', exact:true})).toHaveCount(0);
+  await page.getByRole('button', {name:'Вклад блюд · Жиры', exact:true}).click();
+  await expect(page.getByText('Блюдо QA', {exact:true}).first()).toBeVisible();
 });
