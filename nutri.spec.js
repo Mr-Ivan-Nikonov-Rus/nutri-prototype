@@ -391,7 +391,7 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   const sugar=page.getByRole('button',{name:'Открыть норму Добавленный сахар'});
   await expect(sugar.locator('strong')).toHaveText('Сахар');
   const saturatedFat=page.getByRole('button',{name:'Открыть норму Насыщенные жиры'});
-  await expect(saturatedFat.locator('strong')).toHaveText('Насыщ. жиры');
+  await expect(saturatedFat.locator('strong')).toHaveText('НЖК');
   for (const width of [320,390]) {
     await page.setViewportSize({width,height:844});
     expect(await saturatedFat.locator('strong').evaluate(label=>label.scrollWidth<=label.clientWidth)).toBe(true);
