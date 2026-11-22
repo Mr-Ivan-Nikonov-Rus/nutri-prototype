@@ -345,3 +345,37 @@ test('built-in catalog records have unique IDs, valid macro values and traceable
   expect(audit.products).toEqual([]);
   expect(audit.recipes).toEqual([]);
 });
+
+test('diary shows aligned micronutrients and a green add-food action', async ({page}, testInfo) => {
+  await page.evaluate(key=>{
+    const data=JSON.parse(localStorage.getItem(key));
+    data.goals.customNorms.vitamin_d_mcg=15;
+    data.entries.push({id:'micros-layout',date:todayISO(),meal:'lunch',time:'12:00',kind:'manual',
+      name:'Тёплый салат',status:'consumed',grams:240,
+      macros:{kcal:443,p:16,f:17,c:55,fiber:8},nutrients:{vitamin_d_mcg:7}});
+    localStorage.setItem(key,JSON.stringify(data));
+  },STORE);
+  await page.reload();
+  await go(page,'nutrition');
+  const row=page.locator('.micro-diary-row[data-nutrient="vitamin_d_mcg"]');
+  await expect(row.locator('.micro-amount')).toContainText(/7\s*\/15/);
+  await expect(row.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
+  const section=row.locator('..');
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:844});
+    for(const item of await section.locator('.micro-diary-row').all()){
+      const [label,bar,amount]=await Promise.all(item.locator(':scope > *').all().then(children=>children.map(child=>child.boundingBox())));
+      expect(label.x+label.width).toBeLessThanOrEqual(bar.x);
+      expect(bar.x+bar.width).toBeLessThanOrEqual(amount.x);
+      expect(amount.x+amount.width).toBeLessThanOrEqual(width);
+    }
+    if(width===390)await testInfo.attach('micronutrients-390',{body:await section.screenshot(),contentType:'image/png'});
+  }
+  await page.locator('[data-act="meal"][data-meal="lunch"]').click();
+  const add=page.getByRole('button',{name:'Добавить еду'});
+  await expect(add).toHaveClass(/\bprimary\b/);
+  await expect(add).toHaveCSS('background-image',/rgb\(197, 247, 108\)/);
+  await testInfo.attach('meal-add-food-390',{body:await page.screenshot(),contentType:'image/png'});
+  await add.click();
+  await expect(page.locator('#manualMealForm')).toBeVisible();
+});
