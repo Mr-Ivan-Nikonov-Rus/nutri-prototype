@@ -1502,6 +1502,14 @@ for(const ingredient of DB.ingredients){
  if(q)ingredient.ruMatching={status:q.status,reason:q.reason};
  else ingredient.ruMatching={status:'system_reference_not_ru_certified',reason:'Системная справочная запись: независимая российская аттестация отсутствует.'};
 }
+// Manufacturer listing for this exact 205 g pack confirms KБЖУ only.
+const creamLabel=DB.ingredients.find(item=>item.id==='ru0270');
+creamLabel.ruReference={
+ url:'https://prostokvashino.ru/product/slivki-10--205-g/',
+ label:'Сливки 10%, 205 г, Простоквашино',
+ sourceType:'manufacturer_label',confirmed:['kcal','p','f','c'],estimated:['fiber']
+};
+creamLabel.ruMatching={status:'ru_named_reference_macros',reason:'Производитель подтверждает КБЖУ для упаковки 205 г.'};
 function r133IdentitySummary(){
  const counts={};for(const x of DB.ingredients){const k=x.ruMatching?.status||'unclassified';counts[k]=(counts[k]||0)+1;}
  return {total:DB.ingredients.length,documented:DB.ingredients.filter(x=>x.ruMatching).length,
@@ -3981,7 +3989,7 @@ function renderCatalogProvenance(type,id){
  return `<section class="r13-source-quality${conflict?' has-conflict':''}" aria-label="Качество пищевых данных">
  <div class="r13-source-head"><b>Достоверность состава</b><span>${q.known}/${q.total} доп. нутриентов</span></div>
  <p class="r13-source-lead">${esc(typeText)} · ${esc(status)}.</p>
- ${q.ruReferences?`<p class="body-note r133-ru-reference"><b>Российский образец:</b> ${q.referenceDetails.map(x=>esc(x.name)).join('; ')}. Калории и БЖУ приведены по российскому образцу. Микронутриенты и клетчатка неизвестны; для сайры углеводы 0 г — отдельное расчётное допущение. Не заменяйте этим образцом произвольный бренд.</p>`:`<p class="body-note r133-ru-reference">Соответствие продукта РФ не сертифицировано. Статус: ${esc(q.matchingStatuses.join(', ')||'не определён')}.</p>`}
+ ${q.ruReferences?`<p class="body-note r133-ru-reference"><b>Российский образец:</b> ${q.referenceDetails.map(x=>esc(x.name)).join('; ')}. Калории и БЖУ приведены по российскому образцу. Достоверность распространяется на заявленные поля. Микронутриенты этих образцов не подтверждены.${q.referenceDetails.some(x=>x.estimated.includes('fiber'))?' Клетчатка 0 г для сливок — допущение.':''}${q.referenceDetails.some(x=>x.estimated.includes('c'))?' Для сайры углеводы 0 г — допущение.':''} Не заменяйте этим образцом произвольный бренд.</p>`:`<p class="body-note r133-ru-reference">Соответствие продукта РФ не сертифицировано. Статус: ${esc(q.matchingStatuses.join(', ')||'не определён')}.</p>`}
  ${q.ruReferences?`<p class="body-note r132-source-evidence" style="margin-top:8px">Для российского образца использованы данные изготовителя или Роскачества; USDA не используется как источник его текущих значений. Сверены лишь перечисленные КБЖУ.</p>`:`<p class="body-note r132-source-evidence" style="margin-top:8px">Сверка USDA SR Legacy 2018: ${q.sourceNumericChecked} из ${q.ingredientCount} исходных продуктов; совпало ${q.sourceMatchedValues} числовых значений.${q.sourceUnknownValues?' Не сопоставлено: '+q.sourceUnknownValues+' знач.':''} Это проверка справочника, а не подтверждение соответствия продукта РФ.</p>`}
  ${conflict?`<p class="r13-source-warning" role="alert"><b>Проверьте аналог:</b> ${q.mismatch.map(m=>esc(m.reason)).join('; ')}. Значения могут не соответствовать российскому продукту.</p>`:''}
  <details><summary>Источники, пробелы и ограничения</summary>
@@ -4029,6 +4037,8 @@ function renderMatch(){let matches=matchingRecipes();let gap=Math.max(0,(goalVal
 // independently verified complete composition. In particular, RU fish carbohydrates
 // were not reported in the external study. Keep catalog verification flags unchanged.
 const NUTRI_R151_RU_MACRO_EVIDENCE={
+ 'ru0270':{status:'manufacturer_label_match',fields:['kcal','p','f','c'],year:'просмотрено 22.11.2026',source:'«Простоквашино», сливки 10%, 205 г',url:creamLabel.ruReference.url,note:'118 ккал, 2,7 г белка, 10 г жира и 4,2 г углеводов на 100 г; клетчатка не указана в карточке'},
+
  'ru0239':{status:'manufacturer_label_match',fields:['kcal','p','f','c'],year:'просмотрено 21.11.2026',source:'«Простоквашино», карточка кефира 2,5% (930 г)',url:'https://prostokvashino.ru/product/kefir-2-5-930-g/',note:'Заявленные КБЖУ на 100 г, не независимая лабораторная проверка микронутриентов и партий'},
  'ru0175':{status:'manufacturer_label_match',fields:['kcal','p','f','c'],year:'просмотрено 21.11.2026',source:'«Велком», «Докторская» ГОСТ в натуральной оболочке',url:'https://velkomfood.ru/products/varenye-kolbasy/kolbasa-doktorskaya-gost-v-naturalnoy-obolochke/',note:'Заявленные КБЖУ совпадают для указанного варианта товара; другие фасовки могут отличаться'},
  'ru0197':{status:'published_label_match',fields:['kcal','p','f'],year:'исследование 2023',source:'Роскачество, сайра «Примрыбснаб», исследование 2023',url:'https://rskrf.ru/goods/naturalnye-rybnye-konservy-s-dobavleniem-masla-sayra-tikhookeanskaya-naturalnaya-s-dobavleniem-masla/',note:'Сопоставлены заявленные энергия/белки/жиры; углеводы и микронутриенты этим источником не подтверждены'}

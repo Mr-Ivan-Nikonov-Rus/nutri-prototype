@@ -22,6 +22,7 @@ export default defineConfig({
   projects: [
     { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
     { name: 'mobile-chromium', use: { ...devices['iPhone 13'], browserName: 'chromium' } },
+    { name: 'mobile-webkit', use: { ...devices['iPhone 13'], browserName: 'webkit' } },
   ],
   webServer: {
     command: 'node tests/serve.mjs',
