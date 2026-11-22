@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v19.7.0 R12 release regression, runs against local loopback only.
+// NUTRI v20.1.0 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -33,13 +33,8 @@ test.beforeEach(async ({page}) => {
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.0-R16.2');
-await page.goto('/');
-
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.0-R16.2');
-
 });
 
-test('@smoke version, empty diary and three-tab
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
   expect((await state(page)).entries).toHaveLength(0);
   await go(page,'nutrition'); expect(await page.evaluate(()=>window.NUTRI_QA.getRoute())).toBe('nutrition');
