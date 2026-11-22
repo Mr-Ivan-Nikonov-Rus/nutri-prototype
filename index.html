@@ -1484,6 +1484,7 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
 .norm-row.nutrient-strip .norm-progress-fill.limit-exceeded{background:#ffaaa9;box-shadow:0 0 6px #ffaaa94d}
 .norm-row.nutrient-strip .micro-amount small{display:inline;margin:0}
 .norm-row.nutrient-strip .norm-row-title small{margin-top:3px}
+.norm-row[data-nutrient="saturated_fat_g"] .norm-row-title strong{font-size:.75rem;white-space:nowrap}
 .norm-row.nutrient-strip .norm-strip-note{grid-column:1/-1;color:#abc5d3;margin:0}
 
 </style></head>
@@ -3696,7 +3697,8 @@ function renderNutrients(){
  <div class="card slim norms-summary norms-summary-compact" style="margin-bottom:12px"><div class="norms-summary-head"><div><h3>${state.profile.special==='specialist'||missing.length||special?'Справочные ориентиры':'Личные ориентиры'}</h3><p>${state.profile.special==='specialist'?'Справочные значения для взрослых; персональные нормы можно задать вручную.':'Нажмите на показатель, чтобы изменить его норму.'}</p></div><span class="group-meta">${rows.length} показателя</span></div></div>
  <div class="stack">${Object.keys(headings).map(group=>`<section class="card slim norm-group" data-norm-group="${group}"><div class="row" style="margin-bottom:10px"><h2 class="card-title">${headings[group]}</h2><span class="group-meta">Вклад в индекс · ${fmt(groupWeights[group],1)}%</span></div>${rows.filter(d=>d.group===group).map(d=>{
   const info=displayedNormInfo(d.id),intake=totalNutrient(d.id,selectedDate,false),src=sourceName(info);
-  return `<button class="norm-row ghost nutrient-strip" type="button" data-nutrient="${d.id}" data-act="normEdit" data-id="${d.id}" data-norm-name="${esc(d.labelRu.toLowerCase())}" aria-label="Открыть норму ${d.labelRu}"><span class="norm-row-title"><strong>${d.labelRu}</strong><small>${src}</small></span>${renderNormProgress(d,info,intake)}</button>`}).join('')}</section>`).join('')}</div>
+  const label={added_sugar_g:'Сахар',saturated_fat_g:'Насыщ. жиры'}[d.id]??d.labelRu;
+  return `<button class="norm-row ghost nutrient-strip" type="button" data-nutrient="${d.id}" data-act="normEdit" data-id="${d.id}" data-norm-name="${esc(d.labelRu.toLowerCase())}" aria-label="Открыть норму ${d.labelRu}"><span class="norm-row-title"><strong>${label}</strong><small>${src}</small></span>${renderNormProgress(d,info,intake)}</button>`}).join('')}</section>`).join('')}</div>
  <div class="card slim" style="margin-top:12px"><h3>Источники и пределы применимости</h3><p class="body-note" style="margin:8px 0">Роспотребнадзор, МР 2.3.1.0253-21 (2021), табл. 11–12 и 16–17, а также нормы сахара и НЖК; EFSA (2017), EPA+DHA; ВОЗ (2012), ограничение натрия.</p><p class="tiny">Пределы токсичности (UL) для витаминов и минералов зависят от формы и источника поступления; этот прототип не оценивает безопасность доз. Индекс остаётся экспериментальным, пока неполон состав продуктов.</p></div>`;
 }
 function renderNormEdit(){

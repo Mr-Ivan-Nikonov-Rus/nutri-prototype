@@ -388,6 +388,15 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   await expect(row.locator('.bar')).toHaveCSS('height','9px');
   await page.getByRole('button',{name:'Все нутриенты'}).click();
   await expect(page.locator('.norm-row.nutrient-strip')).toHaveCount(22);
+  const sugar=page.getByRole('button',{name:'Открыть норму Добавленный сахар'});
+  await expect(sugar.locator('strong')).toHaveText('Сахар');
+  const saturatedFat=page.getByRole('button',{name:'Открыть норму Насыщенные жиры'});
+  await expect(saturatedFat.locator('strong')).toHaveText('Насыщ. жиры');
+  for (const width of [320,390]) {
+    await page.setViewportSize({width,height:844});
+    expect(await saturatedFat.locator('strong').evaluate(label=>label.scrollWidth<=label.clientWidth)).toBe(true);
+  }
+  await testInfo.attach('limits-390',{body:await saturatedFat.locator('xpath=..').screenshot(),contentType:'image/png'});
   const fullRow=page.locator('.norm-row[data-id="vitamin_d_mcg"]');
   await expect(fullRow.locator('.micro-amount')).toContainText(/7\s*\/15/);
   await expect(fullRow.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
