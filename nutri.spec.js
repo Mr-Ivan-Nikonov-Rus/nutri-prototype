@@ -364,7 +364,9 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   for(const width of [320,390]){
     await page.setViewportSize({width,height:844});
     for(const item of await section.locator('.micro-diary-row').all()){
-      const [label,bar,amount]=await Promise.all(item.locator(':scope > *').all().then(children=>children.map(child=>child.boundingBox())));
+      const cells=await item.locator(':scope > *').all();
+      expect(cells).toHaveLength(3);
+      const [label,bar,amount]=await Promise.all(cells.map(cell=>cell.boundingBox()));
       expect(label.x+label.width).toBeLessThanOrEqual(bar.x);
       expect(bar.x+bar.width).toBeLessThanOrEqual(amount.x);
       expect(amount.x+amount.width).toBeLessThanOrEqual(width);
