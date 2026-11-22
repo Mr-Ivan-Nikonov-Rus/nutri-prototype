@@ -32,8 +32,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('19.7.0-R12');
-});
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.0-R16.2');
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
   expect((await state(page)).entries).toHaveLength(0);
