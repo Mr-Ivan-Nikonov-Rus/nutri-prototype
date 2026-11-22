@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.3.0 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.4.0 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.3.0-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.4.0-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -292,4 +292,56 @@ test('recipe preview stores the user yield and preserves the original catalog', 
   expect(entry.recipeYieldG).toBe(original*2);
   expect(entry.recipeYieldBasis).toBe('user');
   expect(await page.evaluate(id=>window.NUTRI_QA.DB.recipes.find(r=>r.id===id).yieldG,id)).toBe(original);
+});
+
+test('own label product is searchable, reusable and historical entries survive edits', async ({page}) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.getByRole('button',{name:'Добавить свой продукт'}).click();
+  const form=page.locator('#ownProductForm');
+  for(const [name,value] of Object.entries({name:'Йогурт QA',kcal:'100',p:'8',f:'3',c:'10'})){
+    await form.locator(`[name="${name}"]`).fill(value);
+  }
+  await form.getByText('Дополнительно с этикетки').click();
+  await form.locator('[name="sodium_mg"]').fill('80');
+  await form.locator('[name="added_sugar_g"]').fill('0');
+  await form.getByRole('button',{name:'Сохранить продукт'}).click();
+  await page.locator('#catalogSearch').fill('Йогурт QA');
+  await page.getByRole('button',{name:'Открыть Йогурт QA'}).click();
+  await expect(page.getByText('Введено с этикетки',{exact:true})).toBeVisible();
+  await page.locator('#portion').fill('150');
+  await page.locator('#portion').press('Tab');
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  await page.reload();
+  const first=(await state(page)).entries[0];
+  expect(first.macros).toEqual({kcal:150,p:12,f:4.5,c:15,fiber:null});
+  expect(first.nutrients).toEqual({sodium_mg:120,added_sugar_g:0});
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.getByRole('button',{name:'Открыть Йогурт QA'}).click();
+  await page.getByRole('button',{name:'Изменить свой продукт'}).click();
+  await page.locator('#ownProductForm [name="kcal"]').fill('130');
+  await page.getByRole('button',{name:'Сохранить продукт'}).click();
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  const updated=(await state(page)).entries;
+  expect(updated.map(row=>row.macros.kcal)).toEqual([150,130]);
+});
+
+test('built-in catalog records have unique IDs, valid macro values and traceable inputs', async ({page}) => {
+  const audit=await page.evaluate(() => {
+    const {ingredients,recipes}=window.NUTRI_QA.DB;
+    const unique=list=>new Set(list.map(row=>row.id)).size===list.length;
+    const macros=row=>['kcal','p','f','c'].every(key=>Number.isFinite(row[key])&&row[key]>=0);
+    return {
+      unique:unique(ingredients)&&unique(recipes),
+      products:ingredients.filter(row=>!macros(row)||!row.source).map(row=>row.id),
+      recipes:recipes.filter(row=>!macros(row.macros)||!(row.yieldG>0)||
+        !row.items.length||row.items.some(it=>!(it.g>0)||!ingredients.some(product=>product.id===it.ingredientId))).map(row=>row.id)
+    };
+  });
+  expect(audit.unique).toBe(true);
+  expect(audit.products).toEqual([]);
+  expect(audit.recipes).toEqual([]);
 });
