@@ -1440,16 +1440,17 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
 .today .macro-list{gap:0!important;padding-inline:2px!important}
 .today .macro.nutrient-tap{column-gap:7px;padding-inline:2px!important}
 .today .macro .bar{height:8px;margin-top:4px}
-.today .overview-nutrient .bar i{
+.today .macro .bar i,.today .overview-nutrient.macro-limit:not(.is-over-limit) .bar i{
  background:linear-gradient(90deg,var(--scale-start),var(--scale-end));
  box-shadow:0 0 7px var(--scale-glow, #69cfe34b)
 }
-.nutrient-strip,.today .overview-nutrient{--scale-start:#30bfd9;--scale-end:#9bf2f3}
-:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="protein_g"],
+.today .overview-nutrient.is-over-limit{--scale-glow:#ffaaa94d}
+.nutrient-strip,.today .macro{--scale-start:#30bfd9;--scale-end:#9bf2f3}
+:is(.nutrient-strip,.today .macro)[data-nutrient="protein_g"],
 .today .is-vitamins .overview-nutrient{--scale-start:#a17aeb;--scale-end:#e3baff;--scale-glow:#bf92ff59}
-:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="fat_g"],
-:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="saturated_fat_g"]{--scale-start:#dfad48;--scale-end:#ffe69a;--scale-glow:#ffd26c55}
-:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="fiber_g"]{--scale-start:#99d34a;--scale-end:#e3ff9b;--scale-glow:#c8f77555}
+:is(.nutrient-strip,.today .macro)[data-nutrient="fat_g"],
+:is(.nutrient-strip,.today .macro)[data-nutrient="saturated_fat_g"]{--scale-start:#dfad48;--scale-end:#ffe69a;--scale-glow:#ffd26c55}
+:is(.nutrient-strip,.today .macro)[data-nutrient="fiber_g"]{--scale-start:#99d34a;--scale-end:#e3ff9b;--scale-glow:#c8f77555}
 .nutrient-strip[data-nutrient="vitamin_d_mcg"]{--scale-start:#617ff9;--scale-end:#9dccff}
 .nutrient-strip[data-nutrient="vitamin_c_mg"]{--scale-start:#2d9de9;--scale-end:#8eeaff}
 .nutrient-strip[data-nutrient="vitamin_b12_mcg"]{--scale-start:#19b9e8;--scale-end:#82edf8}
@@ -1474,7 +1475,7 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
  border-radius:inherit;background:linear-gradient(90deg,var(--scale-start),var(--scale-end));
  box-shadow:0 0 6px #70d9ee38
 }
-:is(.nutrient-strip,.today .overview-nutrient) .micro-bar-partial :is(i,.norm-progress-fill){
+:is(.nutrient-strip,.today .macro) .micro-bar-partial :is(i,.norm-progress-fill){
  background:repeating-linear-gradient(115deg,transparent 0 5px,#061c296e 5px 8px),
  linear-gradient(90deg,var(--scale-start),var(--scale-end))
 }

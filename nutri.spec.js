@@ -361,7 +361,8 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   await expect(page.locator('.today .retro-context-note')).toHaveCount(0);
   await page.locator('.today-day-arrow[data-num="1"]').click();
   await page.setViewportSize({width:390,height:844});
-  await expect(page.locator('.overview-nutrient[data-id="protein_g"] .bar')).toHaveCSS('height','8px');
+  await expect(page.locator('.today .macro[data-id="protein_g"] .bar')).toHaveCSS('height','8px');
+  await expect(page.locator('.today .macro[data-id="protein_g"] .bar i')).toHaveCSS('background-image',/rgb\(161, 122, 235\)/);
   await testInfo.attach('overview-390',{body:await page.locator('.today .macro-list').screenshot(),contentType:'image/png'});
   await go(page,'nutrition');
   const row=page.locator('.micro-diary-row[data-nutrient="vitamin_d_mcg"]');
