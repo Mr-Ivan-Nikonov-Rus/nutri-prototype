@@ -17,9 +17,16 @@ async function addProduct(page, { date, planned=false, meal='breakfast' }={}) {
   if(date) await page.locator('[data-change="diaryDate"]').fill(date);
   await page.locator('[data-act="catalog"]').first().click();
   await page.locator('[data-act="catalogType"][data-val="products"]').click();
-  const id=await page.evaluate(() => window.NUTRI_QA.DB.ingredients.find(x=>x.p*4+x.f*9+x.c*4>20)?.id);
-  expect(id).toBeTruthy();
-  await page.locator(`.catalog-card[data-type="product"][data-id="${id}"]`).click();
+  // R16.2: selectFood is a nested button; the outer .catalog-card is not the action target.
+  // Choose a caloric product from the rendered page instead of assuming any DB id is visible.
+  const id=await page.evaluate(() => {
+    const foods=new Map(window.NUTRI_QA.DB.ingredients.map(x=>[String(x.id),x]));
+    return [...document.querySelectorAll('#catalogResults button[data-act="selectFood"][data-type="product"]')]
+      .map(el=>el.dataset.id)
+      .find(id=>{const x=foods.get(id);return x&&x.p*4+x.f*9+x.c*4>20;});
+  });
+  expect(id, 'Catalog should show at least one caloric product').toBeTruthy();
+  await page.locator(`#catalogResults button[data-act="selectFood"][data-type="product"][data-id="${id}"]`).click();
   await expect(page.locator('#previewMeal')).toBeVisible();
   await page.locator('#previewMeal').selectOption(meal);
   if(date) await page.locator('#previewEntryDate').fill(date);
