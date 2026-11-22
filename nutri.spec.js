@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.1.0 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.1.1 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.0-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.1.1-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -187,4 +187,19 @@ test('app never calls third party nutrition service at startup',async({page})=>{
   page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:4173/')&&!r.url().startsWith('data:'))calls.push(r.url());});
   await page.reload();
   expect(calls).toEqual([]);
+});
+
+test('profile shares only the public NUTRI link', async ({page}) => {
+  await page.evaluate(() => {
+    window.shareCalls = [];
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async payload => window.shareCalls.push(payload),
+    });
+  });
+  await page.getByRole('button', { name: 'Открыть профиль' }).click();
+  await page.getByRole('button', { name: /Поделиться NUTRI/ }).click();
+  await expect.poll(() => page.evaluate(() => window.shareCalls)).toEqual([
+    { title: 'NUTRI', url: 'https://nutri-prototype.onrender.com/' },
+  ]);
 });
