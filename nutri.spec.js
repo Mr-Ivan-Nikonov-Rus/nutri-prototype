@@ -391,10 +391,18 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   const sugar=page.getByRole('button',{name:'Открыть норму Добавленный сахар'});
   await expect(sugar.locator('strong')).toHaveText('Сахар');
   const saturatedFat=page.getByRole('button',{name:'Открыть норму Насыщенные жиры'});
-  await expect(saturatedFat.locator('strong')).toHaveText('НЖК');
+  const fatLabel=saturatedFat.locator('strong');
+  await expect(fatLabel).toHaveText('Насыщенные жиры',{useInnerText:true});
   for (const width of [320,390]) {
     await page.setViewportSize({width,height:844});
-    expect(await saturatedFat.locator('strong').evaluate(label=>label.scrollWidth<=label.clientWidth)).toBe(true);
+    const fits=await fatLabel.evaluate(label=>{
+      const range=document.createRange();
+      range.selectNodeContents(label);
+      const lines=[...range.getClientRects()].filter(rect=>rect.width>0);
+      const scale=label.closest('button').querySelector('.norm-progress-track');
+      return lines.length===2 && lines.every(line=>line.right<=scale.getBoundingClientRect().left);
+    });
+    expect(fits).toBe(true);
   }
   await testInfo.attach('limits-390',{body:await saturatedFat.locator('xpath=..').screenshot(),contentType:'image/png'});
   const fullRow=page.locator('.norm-row[data-id="vitamin_d_mcg"]');
