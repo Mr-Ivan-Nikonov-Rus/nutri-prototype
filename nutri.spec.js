@@ -352,7 +352,8 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
     data.goals.customNorms.vitamin_d_mcg=15;
     data.entries.push({id:'micros-layout',date:todayISO(),meal:'lunch',time:'12:00',kind:'manual',
       name:'Тёплый салат',status:'consumed',grams:240,
-      macros:{kcal:443,p:16,f:17,c:55,fiber:8},nutrients:{vitamin_d_mcg:7}});
+      macros:{kcal:443,p:16,f:17,c:55,fiber:8},
+      nutrients:{vitamin_d_mcg:7,vitamin_c_mg:78,vitamin_b12_mcg:2,magnesium_mg:298,iron_mg:7.6,calcium_mg:850}});
     localStorage.setItem(key,JSON.stringify(data));
   },STORE);
   await page.reload();
@@ -361,6 +362,7 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   await expect(row.locator('.micro-amount')).toContainText(/7\s*\/15/);
   await expect(row.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
   const section=row.locator('..');
+  await expect(section.locator('[data-nutrient="vitamin_b12_mcg"] .micro-name')).toHaveText('B12');
   for(const width of [320,390]){
     await page.setViewportSize({width,height:844});
     for(const item of await section.locator('.micro-diary-row').all()){
