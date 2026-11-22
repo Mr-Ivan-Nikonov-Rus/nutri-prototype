@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.2.1 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.3.0 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.2.1-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.3.0-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -255,4 +255,41 @@ test('contribution evidence shows recorded portion, scaled value, source and mis
   await evidence.getByText(/Суп QA ·/).click();
   await expect(evidence.getByText(/150 г.*на 100 г/)).toBeVisible();
   await expect(evidence.getByText('Источник в записи: Этикетка QA')).toBeVisible();
+});
+
+test('all catalog recipes support an explicit output without changing the catalog', async ({page}) => {
+  const check=await page.evaluate(() => {
+    const recipes=window.NUTRI_QA.DB.recipes;
+    previewMode='recipe';
+    return recipes.map(r=>{
+      previewRef=r.id;
+      previewGrams=Math.min(100,r.yieldG);
+      const before=previewValues({yieldOverride:null,entry:null});
+      const after=previewValues({yieldOverride:r.yieldG*2,entry:null});
+      return {id:r.id,before:before?.macros.kcal,after:after?.macros.kcal,basis:after?.yieldBasis};
+    });
+  });
+  expect(check.length).toBeGreaterThanOrEqual(120);
+  for(const row of check){
+    expect(row.basis,row.id).toBe('user');
+    expect(row.after,row.id).toBeCloseTo(row.before/2,8);
+  }
+});
+
+test('recipe preview stores the user yield and preserves the original catalog', async ({page}) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  const recipe=page.locator('#catalogResults button[data-act="selectFood"][data-type="recipe"]').first();
+  const id=await recipe.getAttribute('data-id');
+  const original=await page.evaluate(id=>window.NUTRI_QA.DB.recipes.find(r=>r.id===id).yieldG,id);
+  await recipe.click();
+  await page.getByText(/Вес готового блюда ·/).click();
+  await page.getByLabel('Вес всей готовой партии, г').fill(String(original*2));
+  await page.getByRole('button',{name:'Применить вес'}).click();
+  await expect(page.getByText('Вес готового блюда указан вами')).toBeVisible();
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  const entry=(await state(page)).entries[0];
+  expect(entry.recipeYieldG).toBe(original*2);
+  expect(entry.recipeYieldBasis).toBe('user');
+  expect(await page.evaluate(id=>window.NUTRI_QA.DB.recipes.find(r=>r.id===id).yieldG,id)).toBe(original);
 });
