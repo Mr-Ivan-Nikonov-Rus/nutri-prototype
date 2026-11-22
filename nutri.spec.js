@@ -347,6 +347,7 @@ test('built-in catalog records have unique IDs, valid macro values and traceable
 });
 
 test('diary shows aligned micronutrients and a green add-food action', async ({page}, testInfo) => {
+  await page.emulateMedia({reducedMotion:'reduce'});
   await page.evaluate(key=>{
     const data=JSON.parse(localStorage.getItem(key));
     data.goals.customNorms.vitamin_d_mcg=15;
@@ -363,6 +364,8 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('.today .macro[data-id="protein_g"] .bar')).toHaveCSS('height','8px');
   await expect(page.locator('.today .macro[data-id="protein_g"] .bar i')).toHaveCSS('background-image',/rgb\(161, 122, 235\)/);
+  const proteinFill=page.locator('.today .macro[data-id="protein_g"] .bar i');
+  await expect.poll(async ()=> (await proteinFill.boundingBox())?.width??0).toBeGreaterThan(20);
   await testInfo.attach('overview-390',{body:await page.locator('.today .macro-list').screenshot(),contentType:'image/png'});
   await go(page,'nutrition');
   const row=page.locator('.micro-diary-row[data-nutrient="vitamin_d_mcg"]');
