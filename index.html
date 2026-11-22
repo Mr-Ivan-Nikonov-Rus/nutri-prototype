@@ -438,30 +438,6 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
 
 .today{padding-bottom:22px}
 .today .today-foot{margin-top:12px;color:#7c9ead}
-/* Compact micronutrient summary in the food diary. */
-.microrow.micro-diary-row{
- display:grid;grid-template-columns:minmax(4.65rem,1fr) minmax(1.6rem,1.8fr) minmax(0,1.18fr);
- align-items:center;column-gap:clamp(6px,2vw,10px);min-block-size:32px;
- margin:0;padding-block:4px;border:0;
-}
-.micro-diary-row:first-of-type{margin-top:5px}
-.micro-diary-row .micro-name{font-size:.8125rem;line-height:1.2;color:#dcebf2;overflow-wrap:anywhere}
-.micro-diary-row .micro-amount{text-align:right;font-variant-numeric:tabular-nums;color:#e9f5fa;font-size:.75rem;line-height:1.25}
-.micro-diary-row .micro-amount b{font-weight:650;white-space:normal;overflow-wrap:anywhere}
-.micro-diary-row .micro-amount small{font:inherit;color:#abc5d3}
-.micro-diary-row .bar{margin:0;height:7px;border-radius:10px;background:rgba(133,180,204,.19)}
-.micro-diary-row .bar i{border-radius:inherit;background:linear-gradient(90deg,var(--micro-start),var(--micro-end))}
-.micro-diary-row .micro-bar-partial i{
- background:repeating-linear-gradient(115deg,transparent 0 5px,rgba(6,28,41,.43) 5px 8px),
-  linear-gradient(90deg,var(--micro-start),var(--micro-end));
-}
-.micro-diary-row .micro-norm-missing{white-space:normal;color:#abc5d3;line-height:1.25}
-.micro-diary-row[data-nutrient="vitamin_d_mcg"]{--micro-start:#6289e8;--micro-end:#a5c9ff}
-.micro-diary-row[data-nutrient="vitamin_c_mg"]{--micro-start:#4e9cdf;--micro-end:#8ed8f8}
-.micro-diary-row[data-nutrient="vitamin_b12_mcg"]{--micro-start:#379fce;--micro-end:#7bdde9}
-.micro-diary-row[data-nutrient="magnesium_mg"]{--micro-start:#36acb8;--micro-end:#82e4df}
-.micro-diary-row[data-nutrient="iron_mg"]{--micro-start:#44b5a4;--micro-end:#9ae9ce}
-.micro-diary-row[data-nutrient="calcium_mg"]{--micro-start:#59bb8e;--micro-end:#aeefac}
 /* The 22-criterion detail keeps points/maximum but reduces visual noise. */
 .balance-score{min-width:88px;gap:4px}
 .balance-score-chip{font-size:11px;font-weight:650}
@@ -1458,6 +1434,56 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
 .r162-allergy-check>span:first-child{font-size:22px;line-height:1;flex:0 0 24px;color:#d9cfb7}.r162-allergy-check.is-checked{border-color:var(--accent);background:rgba(133,171,92,.16)}.r162-allergy-check.is-checked>span:first-child{color:var(--accent)}
 .r162-review-recipe{padding:6px 3px;background:none;border:0;color:#b7e4c2;font-size:10.5px;text-decoration:underline;text-underline-offset:2px;display:inline-flex;align-items:center;gap:2px;text-align:left}
 @media(prefers-reduced-motion:reduce){.r162-star,.r162-metric-track>i{transition:none!important}}
+
+
+/* Consistent horizontal scales across Overview, Nutrition and nutrient norms. */
+.today .macro-list{gap:0!important;padding-inline:2px!important}
+.today .macro.nutrient-tap{column-gap:7px;padding-inline:2px!important}
+.today .macro .bar{height:8px;margin-top:4px}
+.today .overview-nutrient .bar i{
+ background:linear-gradient(90deg,var(--scale-start),var(--scale-end));
+ box-shadow:0 0 7px var(--scale-glow, #69cfe34b)
+}
+.nutrient-strip,.today .overview-nutrient{--scale-start:#30bfd9;--scale-end:#9bf2f3}
+:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="protein_g"],
+.today .is-vitamins .overview-nutrient{--scale-start:#a17aeb;--scale-end:#e3baff;--scale-glow:#bf92ff59}
+:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="fat_g"],
+:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="saturated_fat_g"]{--scale-start:#dfad48;--scale-end:#ffe69a;--scale-glow:#ffd26c55}
+:is(.nutrient-strip,.today .overview-nutrient)[data-nutrient="fiber_g"]{--scale-start:#99d34a;--scale-end:#e3ff9b;--scale-glow:#c8f77555}
+.nutrient-strip[data-nutrient="vitamin_d_mcg"]{--scale-start:#617ff9;--scale-end:#9dccff}
+.nutrient-strip[data-nutrient="vitamin_c_mg"]{--scale-start:#2d9de9;--scale-end:#8eeaff}
+.nutrient-strip[data-nutrient="vitamin_b12_mcg"]{--scale-start:#19b9e8;--scale-end:#82edf8}
+.nutrient-strip[data-nutrient="magnesium_mg"]{--scale-start:#1cbfce;--scale-end:#88f4ec}
+.nutrient-strip[data-nutrient="iron_mg"]{--scale-start:#36c6a8;--scale-end:#a0f7d9}
+.nutrient-strip[data-nutrient="calcium_mg"]{--scale-start:#4ace85;--scale-end:#b0f8a4}
+.nutrient-strip{
+ display:grid;grid-template-columns:minmax(4.65rem,1fr) minmax(1.5rem,2.25fr) minmax(0,1.12fr);
+ align-items:center;column-gap:clamp(6px,1.7vw,9px)
+}
+.microrow.micro-diary-row{min-block-size:32px;margin:0;padding-block:4px;border:0}
+.nutrient-strip .micro-name{font-size:.8125rem;line-height:1.2;color:#dcebf2;overflow-wrap:anywhere}
+.nutrient-strip .micro-amount{text-align:right;font-variant-numeric:tabular-nums;color:#e9f5fa;font-size:.75rem;line-height:1.25;overflow-wrap:anywhere}
+.nutrient-strip .micro-amount b{font-weight:650;white-space:normal}
+.nutrient-strip .micro-amount small{font:inherit;color:#abc5d3}
+.nutrient-strip .bar,.nutrient-strip .norm-progress-track,.nutrient-strip .micro-norm-missing{
+ min-width:0;margin:0;height:9px;border-radius:10px;background:rgba(133,180,204,.22)
+}
+.nutrient-strip .micro-norm-missing{height:auto;background:none;color:#abc5d3;font-size:.6875rem}
+.nutrient-strip .bar,.nutrient-strip .norm-progress-track{overflow:visible}
+.nutrient-strip .bar i,.nutrient-strip .norm-progress-fill{
+ border-radius:inherit;background:linear-gradient(90deg,var(--scale-start),var(--scale-end));
+ box-shadow:0 0 6px #70d9ee38
+}
+:is(.nutrient-strip,.today .overview-nutrient) .micro-bar-partial :is(i,.norm-progress-fill){
+ background:repeating-linear-gradient(115deg,transparent 0 5px,#061c296e 5px 8px),
+ linear-gradient(90deg,var(--scale-start),var(--scale-end))
+}
+.norm-row.nutrient-strip{min-height:48px;padding-block:7px;row-gap:3px;grid-template-columns:minmax(5.4rem,1.15fr) minmax(1.5rem,1.9fr) minmax(0,1.3fr)}
+.norm-row.nutrient-strip .norm-progress-fill.limit{background:linear-gradient(90deg,#d9a949,#ffe396)}
+.norm-row.nutrient-strip .norm-progress-fill.limit-exceeded{background:#ffaaa9;box-shadow:0 0 6px #ffaaa94d}
+.norm-row.nutrient-strip .micro-amount small{display:inline;margin:0}
+.norm-row.nutrient-strip .norm-row-title small{margin-top:3px}
+.norm-row.nutrient-strip .norm-strip-note{grid-column:1/-1;color:#abc5d3;margin:0}
 
 </style></head>
 <body><div class="phone" id="phone"><div id="header"></div><main id="main" class="viewport"></main><div id="navhost"></div><div id="sheetHost"></div><div class="toast" id="toast" role="status" aria-live="polite"></div></div><input type="file" id="importFile" accept="application/json,.json" hidden>
@@ -3381,7 +3407,7 @@ function renderToday(){
  const recoSubcopy=moreCount?`И ещё ${moreCount} ${moreCount===1?'сигнал':'сигнала'} за день`:'Подробнее о рекомендации';
  return `<div class="today"><div class="today-datebar"><button type="button" class="today-day-arrow" data-act="day" data-num="-1" aria-label="Предыдущий день">${svg('left',15)}</button><label class="today-date-label" title="Выбрать день">${svg('calendar',15)} <span>${selectedDate===todayISO()?'Сегодня · '+shortDate(selectedDate):shortDate(selectedDate)}</span><input class="today-date-input" type="date" value="${selectedDate}" max="${todayISO()}" data-change="overviewDate" aria-label="Выбрать дату обзора"></label><button type="button" class="today-day-arrow" data-act="day" data-num="1" aria-label="Следующий день" ${selectedDate>=todayISO()?'disabled':''}>${svg('right',15)}</button>${selectedDate!==todayISO()?'<button type="button" class="today-return" data-act="todayDate">К сегодня</button>':''}</div>
  <section class="gauge" aria-label="${balanceCaption}"><svg viewBox="0 0 280 156" aria-hidden="true"><defs><linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d1f66a"/><stop offset=".6" stop-color="#a9e89d"/><stop offset="1" stop-color="#65c8d7"/></linearGradient></defs><path d="M27 138 A113 113 0 1 1 253 138" fill="none" stroke="#385f72" stroke-width="12" stroke-linecap="round"/><path d="M27 138 A113 113 0 1 1 253 138" fill="none" class="motion-gauge-arc" data-motion-score="${index.value===null?0:index.value}" stroke="url(#gaugeGrad)" stroke-width="12" stroke-linecap="round" pathLength="100" stroke-dasharray="${Math.round((index.value??0))} 100"/></svg><div class="gauge-center"><div class="gauge-num" data-motion-value="${index.value===null?0:index.value}">${index.value===null?'—':index.value}<small>${index.value===null?'':'%'}</small></div><div class="gauge-caption" style="${index.provisional&&!index.macroOnly?'font-size:11px':''}">${balanceCaption} <button class="info-btn" data-act="balance" aria-label="Как рассчитывается баланс">i</button></div></div></section><button type="button" class="r12-gauge-evidence" data-act="balanceDetails" aria-label="Открыть детализацию индекса. ${esc(balanceCoverageText)}">${esc(balanceCoverageText)} ${svg('right',13)}</button><p class="energy-summary">${fmt(total.kcal)} из ${fmt(goal)} ккал · ${energyNote}</p>
- ${selectedDate<todayISO()?`<p class="retro-context-note">${esc(retroNormNote(selectedDate))}</p>`:''}<div class="seg" role="group" aria-label="Показатели">${[['macros','КБЖУ'],['vitamins','Витамины'],['minerals','Минералы']].map(p=>`<button data-act="segment" data-val="${p[0]}" class="${segment===p[0]?'active':''}" aria-pressed="${segment===p[0]}">${p[1]}</button>`).join('')}</div><div class="macro-list ${segment==='vitamins'?'is-vitamins':segment==='minerals'?'is-minerals':''}">${metrics}</div><p class="r12-nutrient-legend" role="note">${esc(nutrientLegend)}</p>${segment!=='macros'&&[...(segment==='vitamins'?['vitamin_d_mcg','vitamin_c_mg','vitamin_b12_mcg','folate_mcg','vitamin_e_mg']:['magnesium_mg','iron_mg','calcium_mg','potassium_mg','zinc_mg'])].some(id=>{const n=totalNutrient(id,selectedDate,false),v=n.food??n.partial,g=displayedNormInfo(id).value;return g>0&&v!==null&&v>g})?'<p class="reference-deviation-guide"><span class="reference-symbol" aria-hidden="true">!</span><span>Янтарный индикатор — выше ориентира, не обязательно выше безопасной дозы.</span></p>':''}
+ <div class="seg" role="group" aria-label="Показатели">${[['macros','КБЖУ'],['vitamins','Витамины'],['minerals','Минералы']].map(p=>`<button data-act="segment" data-val="${p[0]}" class="${segment===p[0]?'active':''}" aria-pressed="${segment===p[0]}">${p[1]}</button>`).join('')}</div><div class="macro-list ${segment==='vitamins'?'is-vitamins':segment==='minerals'?'is-minerals':''}">${metrics}</div><p class="r12-nutrient-legend" role="note">${esc(nutrientLegend)}</p>${segment!=='macros'&&[...(segment==='vitamins'?['vitamin_d_mcg','vitamin_c_mg','vitamin_b12_mcg','folate_mcg','vitamin_e_mg']:['magnesium_mg','iron_mg','calcium_mg','potassium_mg','zinc_mg'])].some(id=>{const n=totalNutrient(id,selectedDate,false),v=n.food??n.partial,g=displayedNormInfo(id).value;return g>0&&v!==null&&v>g})?'<p class="reference-deviation-guide"><span class="reference-symbol" aria-hidden="true">!</span><span>Янтарный индикатор — выше ориентира, не обязательно выше безопасной дозы.</span></p>':''}
  ${overviewFocusCard(selectedDate)}<div class="today-foot">Данные прототипа · не медицинская оценка</div></div>`
 }
 function renderNutrition(){let total=sumDay(),sup=state.supplements.filter(x=>x.date===selectedDate),meals=Object.keys(mealLabels);let micros=['vitamin_d_mcg','vitamin_c_mg','vitamin_b12_mcg','magnesium_mg','iron_mg','calcium_mg'];return `<h1 class="page-title">Питание</h1><div class="date-strip"><button data-act="day" data-num="-1" aria-label="Предыдущий день">${svg('left')}</button><label class="retro-date-picker" title="Выбрать любую прошедшую дату">${svg('calendar',15)} <span>${getDateLabel()}</span><input type="date" min="${EARLIEST_DIARY_DATE}" max="2100-12-31" value="${selectedDate}" data-change="diaryDate" aria-label="Выбрать день дневника"></label><button data-act="day" data-num="1" aria-label="Следующий день">${svg('right')}</button></div><div class="retro-context-note">${retroNormNote(selectedDate)||'Выберите дату в календаре, чтобы внести питание за прошлый день.'}</div><button class="search-trigger" data-act="catalog">${svg('search')} Продукты, блюда, рецепты</button>${r152FastDiaryCard()} <div class="stack"><section class="card slim"><div class="row" style="margin-bottom:6px"><h2 class="card-title">Дневник питания</h2><button class="icon-btn add-diary" data-act="addMeal" aria-label="Добавить приём пищи">${svg('plus')}</button></div>${meals.map(m=>{let kcal=state.entries.filter(x=>x.date===selectedDate&&x.meal===m&&x.status==='consumed').reduce((sum,x)=>sum+n(x.macros.kcal),0);let planned=state.entries.filter(x=>x.date===selectedDate&&x.meal===m&&x.status==='planned').length;let demoCount=state.entries.filter(x=>x.date===selectedDate&&x.meal===m&&x.status==='consumed'&&x.kind==='demo').length;return `<button class="meal-row" data-act="meal" data-meal="${m}">${svg(mealDiaryIcons[m]||'bowl')}<strong>${mealLabels[m]}${demoCount?' · демо':''}${planned?' · план '+planned:''}</strong><span class="kcal">${fmt(kcal)} ккал</span>${svg('right',14)}</button>`}).join('')}</section>
@@ -3394,7 +3420,7 @@ function renderNutrition(){let total=sumDay(),sup=state.supplements.filter(x=>x.
  const bar=hasNorm?`<div class="bar ${partial?'micro-bar-partial':''}${percentage>100?' micro-above-target':''}" role="progressbar" aria-label="${dim.labelRu}${info.advisory?' — справочная норма для взрослого':''}${partial?' — учтено '+data.covered+' из '+data.total+' записей':''}" aria-valuemin="0" aria-valuemax="100" ${percentage===null?'':`aria-valuenow="${clamp(percentage,0,100)}" aria-valuetext="${partial?'Не менее ':''}${percentage}% от ориентира${percentage>100?', выше 100%':''}"`}><i style="width:${percentage===null?0:clamp(percentage,0,100)}%"></i></div>`:`<span class="micro-norm-missing">Нет ориентира</span>`;
  const amount=known===null||partial&&known===0?'—':(partial?'≥ ':'')+fmt(known,1);
  const reference=hasNorm?`<small>/${fmt(t,1)} ${dim.unit}</small>`:amount!=='—'?`<small> ${dim.unit}</small>`:'';
- return `<div class="microrow micro-diary-row${percentage>100?' micro-above-reference':''}" data-nutrient="${id}"><span class="micro-name">${label}</span>${bar}<span class="micro-amount"><b>${amount}</b>${reference}</span></div>`;
+ return `<div class="microrow micro-diary-row nutrient-strip${percentage>100?' micro-above-reference':''}" data-nutrient="${id}"><span class="micro-name">${label}</span>${bar}<span class="micro-amount"><b>${amount}</b>${reference}</span></div>`;
 
  }).join('')}${(()=>{const results=micros.map(id=>totalNutrient(id,selectedDate,false));const noData=results.every(x=>x.food===null&&x.partial===null),partial=results.some(x=>x.food===null&&x.partial!==null),noNorm=micros.some(id=>!(goalValue(id,selectedDate)>0));let text=noData?(state.entries.some(x=>x.date===selectedDate&&x.status==='consumed')?'Для записанных приёмов пищи данных о микронутриентах пока нет. Выберите продукт из каталога или укажите ингредиенты и их массы.':'За выбранный день пока нет записанных приёмов пищи. Нормы доступны отдельно от дневника.'):partial?'Полосатая шкала показывает только известную часть рациона. Это не полный итог дня.':'Показаны микроэлементы из фактически съеденных продуктов, без добавок.';if(noNorm)text+=' Для расчёта процентов заполните профиль или задайте ориентиры вручную.';if(state.profile.special==='specialist')text+=' Шкалы сопоставлены со справочными значениями взрослых, НЕ с индивидуальными рекомендациями специалиста.';if(results.some(x=>x.estimated>0))text+=' Часть данных рассчитана из ингредиентов USDA без учёта приготовления.';return `<details class="micro-notes"><summary>О полноте и источниках данных</summary><p class="micro-explainer">${text}</p></details>`})()}</section>
 <section class="card slim"><div class="row"><h2 class="card-title">Добавки</h2><div class="row"><button class="pill" data-act="supplements">Все ${sup.length} ${svg('right',11)}</button><button class="icon-btn" data-act="supplementForm" aria-label="Добавить добавку">${svg('plus')}</button></div></div>${sup.slice(0,3).map(s=>`<div class="supp-row">${svg('pill',17)}<div><div class="title-s">${esc(s.name)}</div><small>${fmt(s.amount,1)} ${esc(s.unit)} · ${esc(s.time)}</small></div><button class="supp-check ${s.status==='taken'?'taken':''}" data-act="toggleSupp" data-id="${esc(s.id)}">${svg(s.status==='taken'?'check':'calendar',15)} ${s.status==='taken'?'Принято':s.status==='skipped'?'Пропущено':'План'}</button></div>`).join('')||'<p class="body-note">Добавок пока нет.</p>'}</section>
@@ -3646,19 +3672,18 @@ function renderFoodprefs(){let p=state.profile;return `<h1 class="page-title">П
 function renderAllergies(){const selected=state.profile.allergies||[];return `<h1 class="page-title">Аллергены</h1><div class="warning">Это фильтр состава рецептов, не подтверждение безопасности блюда. Возможны скрытые ингредиенты, следы аллергенов и перекрёстный контакт.</div><form id="allergyForm" class="card" style="margin-top:14px"><h2 class="card-title">Что исключать строго?</h2><p class="body-note" style="margin-top:7px">Отметьте все применимые аллергены.</p>${Object.entries(allergenLabels).map(([key,label])=>`<label class="checkbox"><span>${label}</span><input type="checkbox" name="allergen" value="${key}" ${selected.includes(key)?'checked':''}></label>`).join('')}<div style="height:15px"></div><button type="submit" class="btn primary block">Сохранить аллергены</button></form>`}
 function renderSpecial(){let p=state.profile;return `<h1 class="page-title">Особые потребности</h1><div class="card"><form id="specialForm"><div class="form-row"><label for="special">Физиологические обстоятельства</label><select id="special" name="special" class="field">${opt(p.special,'none','Не применимо')}${opt(p.special,'pregnant','Беременность')}${opt(p.special,'lactating','Грудное вскармливание')}${opt(p.special,'undisclosed','Предпочитаю не указывать')}${opt(p.special,'specialist','Есть индивидуальные рекомендации специалиста')}</select></div><div class="warning">При особых потребностях NUTRI не назначает диету и не подбирает специальные нормы автоматически без подтверждённого протокола. Ориентиры можно скорректировать вручную.</div><div class="separator"></div><h3 style="margin-bottom:8px">Контроль насыщенных жиров</h3><label class="checkbox"><span>Усиленный контроль LDL-холестерина</span><input type="checkbox" name="ldlControl" ${p.ldlControl?'checked':''}></label><p class="form-help">Добровольный справочный лимит насыщенных жиров: менее 7% суточной энергии вместо общего ограничения ВОЗ ≤10%. Основан на рекомендациях ESC/EAS 2019 для коррекции липидного профиля. Не является диагнозом или персональным назначением. Если врач установил другой лимит, задайте его вручную в «Нормах нутриентов».</p><div style="height:14px"></div><button type="submit" class="btn primary block">Сохранить</button></form></div>`}
 function renderNormProgress(dim,info,intake){
- const hasFull=typeof intake.food==='number'&&Number.isFinite(intake.food);
- const part= !hasFull && typeof intake.partial==='number'&&Number.isFinite(intake.partial);
- const observed=hasFull?intake.food:part?intake.partial:null;
- const goal=info.value,hasGoal=typeof goal==='number'&&Number.isFinite(goal)&&goal>0;
- const supplements=intake.supp>0?` · добавки: +${fmt(intake.supp,2)} ${dim.unit}`:'';
- const amount=observed!==null?(part?'Учтено ≥ ':'Съедено: ')+fmt(observed,2)+' '+dim.unit:(intake.total===0?'Нет записей о питании':'Состав еды неизвестен');
- if(observed===null||!hasGoal)return `<span class="norm-progress"><span class="norm-progress-meta"><span>${amount}${supplements}</span><span>${!hasGoal?'Нет ориентира':'Прогресс не рассчитан'}</span></span></span>`;
- const ratio=observed/goal,percent=Math.round(ratio*100),isLimit=info.kind==='limit',overLimit=isLimit&&ratio>1;
- const progress=Math.min(100,Math.max(0,ratio*100));
- const label=info.advisory?' от справочного ориентира':isLimit?' от лимита':' от цели';
- const status=(part?'≥ ':'')+fmt(percent)+'%'+label;
- const overLabel=overLimit?'Превышен справочный лимит · ':'';
- return `<span class="norm-progress ${ratio>1&&!isLimit?'above-reference':''}"><span class="norm-progress-track ${part?'micro-bar-partial':''}${ratio>1?' micro-above-target':''}${overLimit?' micro-limit-exceeded':''}" style="${ratio>1?`--overflow-cap:${clamp(8+(ratio*100-100)*0.12,8,24)}%`:''}" role="progressbar" aria-label="${esc(dim.labelRu)}: ${esc(status)}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress)}" aria-valuetext="${esc(status)}"><span class="norm-progress-fill${overLimit?' limit-exceeded':isLimit?' limit':''}" style="width:${progress.toFixed(2)}%"></span></span><span class="norm-progress-meta"><span>${amount}${supplements}${part?' · неполные данные':''}</span><span class="norm-progress-percent${overLimit?' over':''}">${overLabel}${status}</span></span></span>`;
+ const observed=intake.food??intake.partial;
+ const partial=intake.food===null&&intake.partial!==null;
+ const goal=info.value,hasGoal=Number.isFinite(goal)&&goal>0;
+ const percent=hasGoal&&observed!==null?observed/goal*100:null;
+ const progress=percent===null?0:clamp(percent,0,100);
+ const isLimit=info.kind==='limit',overLimit=isLimit&&percent>100;
+ const status=percent===null?'Данных о потреблении нет':`${partial?'Не менее ':''}${fmt(percent)}% ${isLimit?'от лимита':'от ориентира'}`;
+ const bar=hasGoal?`<span class="norm-progress-track${partial?' micro-bar-partial':''}${percent>100?' micro-above-target':''}${overLimit?' micro-limit-exceeded':''}" role="progressbar" aria-label="${esc(dim.labelRu)}" aria-valuemin="0" aria-valuemax="100" ${percent===null?'':`aria-valuenow="${Math.round(progress)}"`} aria-valuetext="${esc(status)}"><span class="norm-progress-fill${overLimit?' limit-exceeded':isLimit?' limit':''}" style="width:${progress}%"></span></span>`:`<span class="micro-norm-missing">${info.displayValue?'Справочный диапазон':'Нет ориентира'}</span>`;
+ const value=observed===null?'—':(partial?'≥ ':'')+fmt(observed,2);
+ const reference=hasGoal||info.displayValue?`/${displayedNormValue(info,dim.unit)}`:observed===null?'':` ${dim.unit}`;
+ const notes=[overLimit?'Превышен лимит':'',partial?'Неполные данные':'',intake.supp>0?`Добавки: +${fmt(intake.supp,2)} ${dim.unit}`:''].filter(Boolean);
+ return `${bar}<span class="micro-amount"><b>${value}</b><small>${reference}</small></span>${notes.length?`<small class="norm-strip-note">${notes.join(' · ')}</small>`:''}`;
 }
 function renderNutrients(){
  const rows=DB.dims;
@@ -3670,7 +3695,7 @@ function renderNutrients(){
  <div class="card slim norms-summary norms-summary-compact" style="margin-bottom:12px"><div class="norms-summary-head"><div><h3>${state.profile.special==='specialist'||missing.length||special?'Справочные ориентиры':'Личные ориентиры'}</h3><p>${state.profile.special==='specialist'?'Справочные значения для взрослых; персональные нормы можно задать вручную.':'Нажмите на показатель, чтобы изменить его норму.'}</p></div><span class="group-meta">${rows.length} показателя</span></div></div>
  <div class="stack">${Object.keys(headings).map(group=>`<section class="card slim norm-group" data-norm-group="${group}"><div class="row" style="margin-bottom:10px"><h2 class="card-title">${headings[group]}</h2><span class="group-meta">Вклад в индекс · ${fmt(groupWeights[group],1)}%</span></div>${rows.filter(d=>d.group===group).map(d=>{
   const info=displayedNormInfo(d.id),intake=totalNutrient(d.id,selectedDate,false),src=sourceName(info);
-  return `<button class="norm-row ghost" type="button" data-act="normEdit" data-id="${d.id}" data-norm-name="${esc(d.labelRu.toLowerCase())}" aria-label="Открыть норму ${d.labelRu}"><span class="norm-row-title"><strong>${d.labelRu}</strong><small>${src}</small></span><span class="val-wrap"><span class="val">${displayedNormValue(info,d.unit)}</span><span class="val-arrow">${svg('right',12)}</span></span>${renderNormProgress(d,info,intake)}</button>`}).join('')}</section>`).join('')}</div>
+  return `<button class="norm-row ghost nutrient-strip" type="button" data-nutrient="${d.id}" data-act="normEdit" data-id="${d.id}" data-norm-name="${esc(d.labelRu.toLowerCase())}" aria-label="Открыть норму ${d.labelRu}"><span class="norm-row-title"><strong>${d.labelRu}</strong><small>${src}</small></span>${renderNormProgress(d,info,intake)}</button>`}).join('')}</section>`).join('')}</div>
  <div class="card slim" style="margin-top:12px"><h3>Источники и пределы применимости</h3><p class="body-note" style="margin:8px 0">Роспотребнадзор, МР 2.3.1.0253-21 (2021), табл. 11–12 и 16–17, а также нормы сахара и НЖК; EFSA (2017), EPA+DHA; ВОЗ (2012), ограничение натрия.</p><p class="tiny">Пределы токсичности (UL) для витаминов и минералов зависят от формы и источника поступления; этот прототип не оценивает безопасность доз. Индекс остаётся экспериментальным, пока неполон состав продуктов.</p></div>`;
 }
 function renderNormEdit(){

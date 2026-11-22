@@ -357,6 +357,12 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
     localStorage.setItem(key,JSON.stringify(data));
   },STORE);
   await page.reload();
+  await page.locator('.today-day-arrow[data-num="-1"]').click();
+  await expect(page.locator('.today .retro-context-note')).toHaveCount(0);
+  await page.locator('.today-day-arrow[data-num="1"]').click();
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator('.overview-nutrient[data-id="protein_g"] .bar')).toHaveCSS('height','8px');
+  await testInfo.attach('overview-390',{body:await page.locator('.today .macro-list').screenshot(),contentType:'image/png'});
   await go(page,'nutrition');
   const row=page.locator('.micro-diary-row[data-nutrient="vitamin_d_mcg"]');
   await expect(row.locator('.micro-amount')).toContainText(/7\s*\/15/);
@@ -375,6 +381,20 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
     }
     if(width===390)await testInfo.attach('micronutrients-390',{body:await section.screenshot(),contentType:'image/png'});
   }
+  await expect(row.locator('.bar')).toHaveCSS('height','9px');
+  await page.getByRole('button',{name:'Все нутриенты'}).click();
+  await expect(page.locator('.norm-row.nutrient-strip')).toHaveCount(22);
+  const fullRow=page.locator('.norm-row[data-id="vitamin_d_mcg"]');
+  await expect(fullRow.locator('.micro-amount')).toContainText(/7\s*\/15/);
+  await expect(fullRow.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
+  await testInfo.attach('all-nutrients-390',{body:await page.locator('.norm-group[data-norm-group="C"]').screenshot(),contentType:'image/png'});
+  await page.getByRole('searchbox').fill('магний');
+  await expect(page.locator('.norm-row:visible')).toHaveCount(1);
+  await page.getByRole('button',{name:/Открыть норму Магний/i}).click();
+  await expect(page.locator('#normForm')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Магний',exact:true})).toBeVisible();
+  await page.reload();
+  await go(page,'nutrition');
   await page.locator('[data-act="meal"][data-meal="lunch"]').click();
   const add=page.getByRole('button',{name:'Добавить еду'});
   await expect(add).toHaveClass(/\bprimary\b/);
