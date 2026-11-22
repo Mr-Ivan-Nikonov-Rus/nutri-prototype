@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.2.0 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.2.1 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.2.0-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.2.1-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -219,4 +219,40 @@ test('past recommendations lead with a diary observation and link to dish contri
   await expect(page.getByRole('heading', {name:'Следующий приём пищи', exact:true})).toHaveCount(0);
   await page.getByRole('button', {name:'Вклад блюд · Жиры', exact:true}).click();
   await expect(page.getByText('Блюдо QA', {exact:true}).first()).toBeVisible();
+});
+
+test('nutrient detail distinguishes missing, partial and complete sodium totals', async ({page}) => {
+  const result = await page.evaluate(() => {
+    const info = {kind:'limit', value:2000};
+    return [[null,true],[0,false],[900,true],[2000,false],[2200,true],[2200,false]].map(([value,partial]) =>
+      nutrientDecision('sodium_mg', '2026-11-20', {value, partial, total:2}, {entries:[{name:'Суп',value}],total:value}, info));
+  });
+  expect(result[0].headline).toContain('нужны данные');
+  expect(result[1].headline).toContain('ниже верхнего лимита');
+  expect(result[2].headline).toContain('Итог относительно лимита неизвестен');
+  expect(result[3].headline).toContain('на уровне верхнего лимита');
+  expect(result[4].headline).toContain('минимум');
+  expect(result[5].recommendation).toContain('натрия');
+});
+
+test('contribution evidence shows recorded portion, scaled value, source and missing records', async ({page}) => {
+  const date = d(-2);
+  await page.evaluate(({key,date}) => {
+    const data=JSON.parse(localStorage.getItem(key));
+    data.entries.push(
+      {id:'known-source',date,meal:'lunch',time:'12:00',kind:'manual',name:'Суп QA',status:'consumed',grams:150,source:'Этикетка QA',macros:{kcal:100,p:10,f:2,c:4,fiber:0},nutrients:{sodium_mg:2200}},
+      {id:'missing-source',date,meal:'lunch',time:'12:30',kind:'manual',name:'Хлеб QA',status:'consumed',grams:50,macros:{kcal:100,p:3,f:0,c:20,fiber:0}}
+    );
+    localStorage.setItem(key,JSON.stringify(data));
+  }, {key:STORE,date});
+  await page.reload();
+  await page.getByRole('textbox',{name:'Выбрать дату обзора'}).fill(date);
+  await page.getByRole('button',{name:'Все рекомендации'}).click();
+  await page.getByRole('button',{name:'Вклад блюд · Натрий'}).click();
+  const evidence=page.getByRole('region',{name:'Откуда эта цифра'});
+  await expect(evidence).toContainText('1 из 2 записей');
+  await expect(evidence).toContainText('Хлеб QA · нет данных');
+  await evidence.getByText(/Суп QA ·/).click();
+  await expect(evidence.getByText(/150 г.*на 100 г/)).toBeVisible();
+  await expect(evidence.getByText('Источник в записи: Этикетка QA')).toBeVisible();
 });
