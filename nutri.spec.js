@@ -457,7 +457,7 @@ test('24 hand-computed product and home recipe portions match application calcul
   }
 });
 
-test('cooked buckwheat can be recorded, repeated offline, edited and restored from JSON', async ({page,context}) => {
+test('cooked buckwheat can be recorded, repeated offline, edited and restored from JSON', async ({page,context},testInfo) => {
   await go(page,'nutrition');
   await page.locator('[data-act="catalog"]').first().click();
   await page.getByRole('button',{name:'Продукты',exact:true}).click();
@@ -474,6 +474,12 @@ test('cooked buckwheat can be recorded, repeated offline, edited and restored fr
   await page.getByRole('button',{name:/Выбрать Гречка варёная/}).click();
   await expect(page.locator('#quickGrams')).toHaveValue('125.5');
   await expect(page.locator('#r152MealTarget')).toHaveValue('dinner');
+  await page.setViewportSize({width:320,height:640});
+  await page.locator('#quickGrams').focus();
+  const savePortion=page.getByRole('button',{name:'Записать порцию',exact:true});
+  await savePortion.scrollIntoViewIfNeeded();
+  await expect(savePortion).toBeInViewport({ratio:1});
+  await testInfo.attach('portion-320',{body:await page.locator('#sheetHost [role=dialog]').screenshot(),contentType:'image/png'});
   await context.setOffline(true);
   await page.getByRole('button',{name:'Записать порцию',exact:true}).click();
   await expect(page.locator('#toast')).toContainText('Еда записана · Ужин');
@@ -486,6 +492,8 @@ test('cooked buckwheat can be recorded, repeated offline, edited and restored fr
   await page.locator('[data-act=editEntry]').click();
   await page.locator('#portion').fill('200');
   await page.locator('#portion').press('Tab');
+  const energy=page.locator('.impact-row').filter({has:page.getByText('Калории',{exact:true})});
+  await expect(energy.locator('.impact-topline')).toContainText(/115,5 → 299,5/);
   await page.locator('[data-act=savePreview][data-status=consumed]').click();
   expect((await state(page)).entries.map(e=>Math.round(e.macros.kcal*100))).toEqual([11546,18400]);
   const backup=await state(page);
@@ -497,7 +505,7 @@ test('cooked buckwheat can be recorded, repeated offline, edited and restored fr
   expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,200]);
 });
 
-test('weekly review excludes missing values and links to the exact day', async ({page})=>{
+test('weekly review excludes missing values and links to the exact day', async ({page},testInfo)=>{
   await page.evaluate(({key,days})=>{
     const snapshot=JSON.parse(localStorage.getItem(key));
     snapshot.goals.customNorms={...snapshot.goals.customNorms,fiber_g:25,saturated_fat_g:20};
@@ -517,6 +525,8 @@ test('weekly review excludes missing values and links to the exact day', async (
   const weekly=page.getByRole('region',{name:'Итог за 7 дней'});
   await expect(weekly).toContainText('1 из 2 дн. ниже ориентира');
   await expect(weekly).toContainText('1 из 2 дн. выше лимита');
+  await page.setViewportSize({width:390,height:844});
+  await testInfo.attach('week-390',{body:await weekly.screenshot(),contentType:'image/png'});
   await weekly.getByRole('button',{name:/Открыть дневник/}).first().click();
   await expect(page.locator('[data-change=diaryDate]')).toHaveValue(d(-1));
 });
