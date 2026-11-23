@@ -479,6 +479,7 @@ test('cooked buckwheat can be recorded, repeated offline, edited and restored fr
   const savePortion=page.getByRole('button',{name:'Записать порцию',exact:true});
   await savePortion.scrollIntoViewIfNeeded();
   await expect(savePortion).toBeInViewport({ratio:1});
+  await expect(page.locator('#toast.undo-toast')).toBeHidden();
   await testInfo.attach('portion-320',{body:await page.locator('#sheetHost [role=dialog]').screenshot(),contentType:'image/png'});
   await context.setOffline(true);
   await page.getByRole('button',{name:'Записать порцию',exact:true}).click();

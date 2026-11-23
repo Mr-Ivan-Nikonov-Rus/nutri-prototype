@@ -1496,6 +1496,7 @@ input[type="date"]::-webkit-date-and-time-value{min-width:0;text-align:left}
 #main:has(#manualMealForm),#main:has(#portion){padding-bottom:calc(26px + var(--food-editor-inset,0px))}
 .manual-save{position:sticky;bottom:var(--food-editor-inset,0px);z-index:1}
 .quick-save{position:sticky;bottom:0;padding:8px 0 2px;background:#103347}
+#sheetHost:has(.quick-save)~#toast.undo-toast{display:none}
 .weekly-review{margin:12px 0}
 .weekly-review>.body-note{margin:6px 0}
 .weekly-row{padding:9px 0;border-top:1px solid rgba(174,224,230,.16);font-size:13px}
