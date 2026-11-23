@@ -424,3 +424,99 @@ test('diary shows aligned micronutrients and a green add-food action', async ({p
   await add.click();
   await expect(page.locator('#manualMealForm')).toBeVisible();
 });
+
+test('24 hand-computed product and home recipe portions match application calculations', async ({page}) => {
+  const checks=await page.evaluate(()=>{
+    const rows=[
+      ['buckwheat',346,11.73,2.71,74.95,10.3],
+      ['u0226',92,3.38,.62,19.94,2.7],
+      ['apple',52,.26,.17,13.81,2.4],
+      ['milk',61,3.15,3.25,4.8,0],
+      ['egg',143,12.56,9.51,.72,0],
+      ['u0246',336,14.38,.71,74.62,null]
+    ];
+    const expected=(values,grams,base=100)=>values.map(v=>v===null?null:v*grams/base);
+    const ordered=m=>[m.kcal,m.p,m.f,m.c,m.fiber];
+    const products=rows.flatMap(([id,...values])=>[50,125,250].map(grams=>{
+      previewRef=id;previewMode='product';previewGrams=grams;
+      return {label:id+' '+grams,got:ordered(previewValues({entry:null}).macros),want:expected(values,grams)};
+    }));
+    const batch=[174.4,4.32,.588,40.148,8.12];
+    const soup=[{ingredientId:'potato',g:120,method:'raw'},{ingredientId:'carrot',g:200,method:'raw'}];
+    const recipes=[320,500].flatMap(output=>[80,150,250].map(grams=>({
+      label:'soup '+output+'/'+grams,got:ordered(nutriRecipeCalc(soup,output,grams).portion),want:expected(batch,grams,output)
+    })));
+    return [...products,...recipes];
+  });
+  expect(checks).toHaveLength(24);
+  for(const {label,got,want} of checks){
+    want.forEach((value,index)=>{
+      if(value===null)expect(got[index],label).toBeNull();
+      else expect(got[index],label).toBeCloseTo(value,8);
+    });
+  }
+});
+
+test('cooked buckwheat can be recorded, repeated offline, edited and restored from JSON', async ({page,context}) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.locator('#catalogSearch').fill('гречка');
+  await expect(page.getByRole('button',{name:'Открыть Гречка (сухая)',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Открыть Гречка варёная',exact:true}).click();
+  await page.locator('#portion').fill('125.5');
+  await page.locator('#portion').press('Tab');
+  await page.locator('[data-act=savePreview][data-status=consumed]').click();
+  const original=(await state(page)).entries[0];
+  expect(original.macros.kcal).toBeCloseTo(115.46,8);
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.getByRole('button',{name:'Добавить еду',exact:true}).click();
+  await page.getByRole('button',{name:/Выбрать Гречка варёная/}).click();
+  await expect(page.locator('#quickGrams')).toHaveValue('125.5');
+  await expect(page.locator('#r152MealTarget')).toHaveValue('dinner');
+  await context.setOffline(true);
+  await page.getByRole('button',{name:'Записать порцию',exact:true}).click();
+  await expect(page.locator('#toast')).toContainText('Еда записана · Ужин');
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,125.5]);
+  await context.setOffline(false);
+  await page.reload();
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,125.5]);
+  await go(page,'nutrition');
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.locator('[data-act=editEntry]').click();
+  await page.locator('#portion').fill('200');
+  await page.locator('#portion').press('Tab');
+  await page.locator('[data-act=savePreview][data-status=consumed]').click();
+  expect((await state(page)).entries.map(e=>Math.round(e.macros.kcal*100))).toEqual([11546,18400]);
+  const backup=await state(page);
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.locator('[data-act=deleteEntry]').click();
+  expect((await state(page)).entries).toHaveLength(1);
+  await page.locator('#importFile').setInputFiles({name:'nutri-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
+  await page.locator('[data-act=confirmImport]').click();
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,200]);
+});
+
+test('weekly review excludes missing values and links to the exact day', async ({page})=>{
+  await page.evaluate(({key,days})=>{
+    const snapshot=JSON.parse(localStorage.getItem(key));
+    snapshot.goals.customNorms={...snapshot.goals.customNorms,fiber_g:25,saturated_fat_g:20};
+    snapshot.entries=days.map(([date,fiber,fat,status],index)=>({
+      id:'weekly-'+index,date,meal:'lunch',time:'13:00',kind:'manual',name:'Обед '+index,status,grams:300,
+      macros:{kcal:500,p:20,f:22,c:48,fiber},nutrients:fat===null?{}:{saturated_fat_g:fat}
+    }));
+    localStorage.setItem(key,JSON.stringify(snapshot));
+  },{key:STORE,days:[[d(-1),10,23,'consumed'],[d(-2),28,7,'consumed'],[d(-3),null,null,'consumed'],[d(-4),10,30,'planned'],[d(0),null,null,'consumed']]});
+  await page.reload();
+  const focus=page.getByRole('region',{name:'Фокус дня'});
+  await focus.getByRole('button',{name:/Проверить записи/}).click();
+  await page.getByText(/В каких записях нет данных/).click();
+  await expect(page.getByRole('button',{name:/Обед 4 · Обед/})).toBeVisible();
+  await page.locator('[data-act=closeSheet]').click();
+  await go(page,'progress');
+  const weekly=page.getByRole('region',{name:'Итог за 7 дней'});
+  await expect(weekly).toContainText('1 из 2 дн. ниже ориентира');
+  await expect(weekly).toContainText('1 из 2 дн. выше лимита');
+  await weekly.getByRole('button',{name:/Открыть дневник/}).first().click();
+  await expect(page.locator('[data-change=diaryDate]')).toHaveValue(d(-1));
+});
