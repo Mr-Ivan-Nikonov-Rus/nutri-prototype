@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// NUTRI v20.2.0 R16.2 release regression, runs against local loopback only.
+// NUTRI v20.4.0 R16.2 release regression, runs against local loopback only.
 const STORE = 'NUTRI_PERSONAL_V1';
 const fixture = {
   schemaVersion: 1,
@@ -39,7 +39,7 @@ test.beforeEach(async ({page}) => {
     if(!localStorage.getItem(key))localStorage.setItem(key, JSON.stringify(snapshot));
   }, { key:STORE, snapshot:fixture });
   await page.goto('/');
-  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.2.0-R16.2');
+  await expect.poll(() => page.evaluate(() => window.NUTRI_QA?.appVersion)).toBe('20.4.0-R16.2');
 });
 
 test('@smoke version, empty diary and three-tab navigation', async ({page}) => {
@@ -219,4 +219,315 @@ test('past recommendations lead with a diary observation and link to dish contri
   await expect(page.getByRole('heading', {name:'Следующий приём пищи', exact:true})).toHaveCount(0);
   await page.getByRole('button', {name:'Вклад блюд · Жиры', exact:true}).click();
   await expect(page.getByText('Блюдо QA', {exact:true}).first()).toBeVisible();
+});
+
+test('nutrient detail distinguishes missing, partial and complete sodium totals', async ({page}) => {
+  const result = await page.evaluate(() => {
+    const info = {kind:'limit', value:2000};
+    return [[null,true],[0,false],[900,true],[2000,false],[2200,true],[2200,false]].map(([value,partial]) =>
+      nutrientDecision('sodium_mg', '2026-11-20', {value, partial, total:2}, {entries:[{name:'Суп',value}],total:value}, info));
+  });
+  expect(result[0].headline).toContain('нужны данные');
+  expect(result[1].headline).toContain('ниже верхнего лимита');
+  expect(result[2].headline).toContain('Итог относительно лимита неизвестен');
+  expect(result[3].headline).toContain('на уровне верхнего лимита');
+  expect(result[4].headline).toContain('минимум');
+  expect(result[5].recommendation).toContain('натрия');
+});
+
+test('contribution evidence shows recorded portion, scaled value, source and missing records', async ({page}) => {
+  const date = d(-2);
+  await page.evaluate(({key,date}) => {
+    const data=JSON.parse(localStorage.getItem(key));
+    data.entries.push(
+      {id:'known-source',date,meal:'lunch',time:'12:00',kind:'manual',name:'Суп QA',status:'consumed',grams:150,source:'Этикетка QA',macros:{kcal:100,p:10,f:2,c:4,fiber:0},nutrients:{sodium_mg:2200}},
+      {id:'missing-source',date,meal:'lunch',time:'12:30',kind:'manual',name:'Хлеб QA',status:'consumed',grams:50,macros:{kcal:100,p:3,f:0,c:20,fiber:0}}
+    );
+    localStorage.setItem(key,JSON.stringify(data));
+  }, {key:STORE,date});
+  await page.reload();
+  await page.getByRole('textbox',{name:'Выбрать дату обзора'}).fill(date);
+  await page.getByRole('button',{name:'Все рекомендации'}).click();
+  await page.getByRole('button',{name:'Вклад блюд · Натрий'}).click();
+  const evidence=page.getByRole('region',{name:'Откуда эта цифра'});
+  await expect(evidence).toContainText('1 из 2 записей');
+  await expect(evidence).toContainText('Хлеб QA · нет данных');
+  await evidence.getByText(/Суп QA ·/).click();
+  await expect(evidence.getByText(/150 г.*на 100 г/)).toBeVisible();
+  await expect(evidence.getByText('Источник в записи: Этикетка QA')).toBeVisible();
+});
+
+test('all catalog recipes support an explicit output without changing the catalog', async ({page}) => {
+  const check=await page.evaluate(() => {
+    const recipes=window.NUTRI_QA.DB.recipes;
+    previewMode='recipe';
+    return recipes.map(r=>{
+      previewRef=r.id;
+      previewGrams=Math.min(100,r.yieldG);
+      const before=previewValues({yieldOverride:null,entry:null});
+      const after=previewValues({yieldOverride:r.yieldG*2,entry:null});
+      return {id:r.id,before:before?.macros.kcal,after:after?.macros.kcal,basis:after?.yieldBasis};
+    });
+  });
+  expect(check.length).toBeGreaterThanOrEqual(120);
+  for(const row of check){
+    expect(row.basis,row.id).toBe('user');
+    expect(row.after,row.id).toBeCloseTo(row.before/2,8);
+  }
+});
+
+test('recipe preview stores the user yield and preserves the original catalog', async ({page}) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  const recipe=page.locator('#catalogResults button[data-act="selectFood"][data-type="recipe"]').first();
+  const id=await recipe.getAttribute('data-id');
+  const original=await page.evaluate(id=>window.NUTRI_QA.DB.recipes.find(r=>r.id===id).yieldG,id);
+  await recipe.click();
+  await page.getByText(/Вес готового блюда ·/).click();
+  await page.getByLabel('Вес всей готовой партии, г').fill(String(original*2));
+  await page.getByRole('button',{name:'Применить вес'}).click();
+  await expect(page.getByText('Вес готового блюда указан вами')).toBeVisible();
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  const entry=(await state(page)).entries[0];
+  expect(entry.recipeYieldG).toBe(original*2);
+  expect(entry.recipeYieldBasis).toBe('user');
+  expect(await page.evaluate(id=>window.NUTRI_QA.DB.recipes.find(r=>r.id===id).yieldG,id)).toBe(original);
+});
+
+test('own label product is searchable, reusable and historical entries survive edits', async ({page}) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.getByRole('button',{name:'Добавить свой продукт'}).click();
+  const form=page.locator('#ownProductForm');
+  for(const [name,value] of Object.entries({name:'Йогурт QA',kcal:'100',p:'8',f:'3',c:'10'})){
+    await form.locator(`[name="${name}"]`).fill(value);
+  }
+  await form.getByText('Дополнительно с этикетки').click();
+  await form.locator('[name="sodium_mg"]').fill('80');
+  await form.locator('[name="added_sugar_g"]').fill('0');
+  await form.getByRole('button',{name:'Сохранить продукт'}).click();
+  await page.locator('#catalogSearch').fill('Йогурт QA');
+  await page.getByRole('button',{name:'Открыть Йогурт QA'}).click();
+  await expect(page.getByText('Введено с этикетки',{exact:true})).toBeVisible();
+  await page.locator('#portion').fill('150');
+  await page.locator('#portion').press('Tab');
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  await page.reload();
+  const first=(await state(page)).entries[0];
+  expect(first.macros).toEqual({kcal:150,p:12,f:4.5,c:15,fiber:null});
+  expect(first.nutrients).toEqual({sodium_mg:120,added_sugar_g:0});
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.getByRole('button',{name:'Открыть Йогурт QA'}).click();
+  await page.getByRole('button',{name:'Изменить свой продукт'}).click();
+  await page.locator('#ownProductForm [name="kcal"]').fill('130');
+  await page.getByRole('button',{name:'Сохранить продукт'}).click();
+  await page.locator('[data-act="savePreview"][data-status="consumed"]').click();
+  const updated=(await state(page)).entries;
+  expect(updated.map(row=>row.macros.kcal)).toEqual([150,130]);
+});
+
+test('built-in catalog records have unique IDs, valid macro values and traceable inputs', async ({page}) => {
+  const audit=await page.evaluate(() => {
+    const {ingredients,recipes}=window.NUTRI_QA.DB;
+    const unique=list=>new Set(list.map(row=>row.id)).size===list.length;
+    const macros=row=>['kcal','p','f','c'].every(key=>Number.isFinite(row[key])&&row[key]>=0);
+    return {
+      unique:unique(ingredients)&&unique(recipes),
+      products:ingredients.filter(row=>!macros(row)||!row.source).map(row=>row.id),
+      recipes:recipes.filter(row=>!macros(row.macros)||!(row.yieldG>0)||
+        !row.items.length||row.items.some(it=>!(it.g>0)||!ingredients.some(product=>product.id===it.ingredientId))).map(row=>row.id)
+    };
+  });
+  expect(audit.unique).toBe(true);
+  expect(audit.products).toEqual([]);
+  expect(audit.recipes).toEqual([]);
+});
+
+test('diary shows aligned micronutrients and a green add-food action', async ({page}, testInfo) => {
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.evaluate(key=>{
+    const data=JSON.parse(localStorage.getItem(key));
+    data.goals.customNorms.vitamin_d_mcg=15;
+    data.entries.push({id:'micros-layout',date:todayISO(),meal:'lunch',time:'12:00',kind:'manual',
+      name:'Тёплый салат',status:'consumed',grams:240,
+      macros:{kcal:443,p:16,f:17,c:55,fiber:8},
+      nutrients:{vitamin_d_mcg:7,vitamin_c_mg:78,vitamin_b12_mcg:2,magnesium_mg:298,iron_mg:7.6,calcium_mg:850}});
+    localStorage.setItem(key,JSON.stringify(data));
+  },STORE);
+  await page.reload();
+  await page.locator('.today-day-arrow[data-num="-1"]').click();
+  await expect(page.locator('.today .retro-context-note')).toHaveCount(0);
+  await page.locator('.today-day-arrow[data-num="1"]').click();
+  await page.setViewportSize({width:390,height:844});
+  await expect(page.locator('.today .macro[data-id="protein_g"] .bar')).toHaveCSS('height','8px');
+  await expect(page.locator('.today .macro[data-id="protein_g"] .bar i')).toHaveCSS('background-image',/rgb\(161, 122, 235\)/);
+  const proteinFill=page.locator('.today .macro[data-id="protein_g"] .bar i');
+  await expect.poll(async ()=> (await proteinFill.boundingBox())?.width??0).toBeGreaterThan(20);
+  await testInfo.attach('overview-390',{body:await page.locator('.today .macro-list').screenshot(),contentType:'image/png'});
+  await go(page,'nutrition');
+  const row=page.locator('.micro-diary-row[data-nutrient="vitamin_d_mcg"]');
+  await expect(row.locator('.micro-amount')).toContainText(/7\s*\/15/);
+  await expect(row.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
+  const section=row.locator('..');
+  await expect(section.locator('[data-nutrient="vitamin_b12_mcg"] .micro-name')).toHaveText('B12');
+  for(const width of [320,390]){
+    await page.setViewportSize({width,height:844});
+    for(const item of await section.locator('.micro-diary-row').all()){
+      const cells=await item.locator(':scope > *').all();
+      expect(cells).toHaveLength(3);
+      const [label,bar,amount]=await Promise.all(cells.map(cell=>cell.boundingBox()));
+      expect(label.x+label.width).toBeLessThanOrEqual(bar.x);
+      expect(bar.x+bar.width).toBeLessThanOrEqual(amount.x);
+      expect(amount.x+amount.width).toBeLessThanOrEqual(width);
+    }
+    if(width===390)await testInfo.attach('micronutrients-390',{body:await section.screenshot(),contentType:'image/png'});
+  }
+  await expect(row.locator('.bar')).toHaveCSS('height','9px');
+  await page.getByRole('button',{name:'Все нутриенты'}).click();
+  await expect(page.locator('.norm-row.nutrient-strip')).toHaveCount(22);
+  const sugar=page.getByRole('button',{name:'Открыть норму Добавленный сахар'});
+  await expect(sugar.locator('strong')).toHaveText('Сахар');
+  const saturatedFat=page.getByRole('button',{name:'Открыть норму Насыщенные жиры'});
+  const fatLabel=saturatedFat.locator('strong');
+  await expect(fatLabel).toHaveText('Насыщенные жиры',{useInnerText:true});
+  for (const width of [320,390]) {
+    await page.setViewportSize({width,height:844});
+    const fits=await fatLabel.evaluate(label=>{
+      const range=document.createRange();
+      range.selectNodeContents(label);
+      const lines=[...range.getClientRects()].filter(rect=>rect.width>0);
+      const scale=label.closest('button').querySelector('.norm-progress-track');
+      return lines.length===2 && lines.every(line=>line.right<=scale.getBoundingClientRect().left);
+    });
+    expect(fits).toBe(true);
+  }
+  await testInfo.attach('limits-390',{body:await saturatedFat.locator('xpath=..').screenshot(),contentType:'image/png'});
+  const fullRow=page.locator('.norm-row[data-id="vitamin_d_mcg"]');
+  await expect(fullRow.locator('.micro-amount')).toContainText(/7\s*\/15/);
+  await expect(fullRow.getByRole('progressbar')).toHaveAttribute('aria-valuenow','47');
+  await testInfo.attach('all-nutrients-390',{body:await page.locator('.norm-group[data-norm-group="C"]').screenshot(),contentType:'image/png'});
+  await page.getByRole('searchbox').fill('магний');
+  await expect(page.locator('.norm-row:visible')).toHaveCount(1);
+  await page.getByRole('button',{name:/Открыть норму Магний/i}).click();
+  await expect(page.locator('#normForm')).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Магний',exact:true})).toBeVisible();
+  await page.reload();
+  await go(page,'nutrition');
+  await page.locator('[data-act="meal"][data-meal="lunch"]').click();
+  const add=page.getByRole('button',{name:'Добавить еду'});
+  await expect(add).toHaveClass(/\bprimary\b/);
+  await expect(add).toHaveCSS('background-image',/rgb\(197, 247, 108\)/);
+  await testInfo.attach('meal-add-food-390',{body:await page.screenshot(),contentType:'image/png'});
+  await add.click();
+  await expect(page.locator('#manualMealForm')).toBeVisible();
+});
+
+test('24 hand-computed product and home recipe portions match application calculations', async ({page}) => {
+  const checks=await page.evaluate(()=>{
+    const rows=[
+      ['buckwheat',346,11.73,2.71,74.95,10.3],
+      ['u0226',92,3.38,.62,19.94,2.7],
+      ['apple',52,.26,.17,13.81,2.4],
+      ['milk',61,3.15,3.25,4.8,0],
+      ['egg',143,12.56,9.51,.72,0],
+      ['u0246',336,14.38,.71,74.62,null]
+    ];
+    const expected=(values,grams,base=100)=>values.map(v=>v===null?null:v*grams/base);
+    const ordered=m=>[m.kcal,m.p,m.f,m.c,m.fiber];
+    const products=rows.flatMap(([id,...values])=>[50,125,250].map(grams=>{
+      previewRef=id;previewMode='product';previewGrams=grams;
+      return {label:id+' '+grams,got:ordered(previewValues({entry:null}).macros),want:expected(values,grams)};
+    }));
+    const batch=[174.4,4.32,.588,40.148,8.12];
+    const soup=[{ingredientId:'potato',g:120,method:'raw'},{ingredientId:'carrot',g:200,method:'raw'}];
+    const recipes=[320,500].flatMap(output=>[80,150,250].map(grams=>({
+      label:'soup '+output+'/'+grams,got:ordered(nutriRecipeCalc(soup,output,grams).portion),want:expected(batch,grams,output)
+    })));
+    return [...products,...recipes];
+  });
+  expect(checks).toHaveLength(24);
+  for(const {label,got,want} of checks){
+    want.forEach((value,index)=>{
+      if(value===null)expect(got[index],label).toBeNull();
+      else expect(got[index],label).toBeCloseTo(value,8);
+    });
+  }
+});
+
+test('cooked buckwheat can be recorded, repeated offline, edited and restored from JSON', async ({page,context},testInfo) => {
+  await go(page,'nutrition');
+  await page.locator('[data-act="catalog"]').first().click();
+  await page.getByRole('button',{name:'Продукты',exact:true}).click();
+  await page.locator('#catalogSearch').fill('гречка');
+  await expect(page.getByRole('button',{name:'Открыть Гречка (сухая)',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Открыть Гречка варёная',exact:true}).click();
+  await page.locator('#portion').fill('125.5');
+  await page.locator('#portion').press('Tab');
+  await page.locator('[data-act=savePreview][data-status=consumed]').click();
+  const original=(await state(page)).entries[0];
+  expect(original.macros.kcal).toBeCloseTo(115.46,8);
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.getByRole('button',{name:'Добавить еду',exact:true}).click();
+  await page.getByRole('button',{name:/Выбрать Гречка варёная/}).click();
+  await expect(page.locator('#quickGrams')).toHaveValue('125.5');
+  await expect(page.locator('#r152MealTarget')).toHaveValue('dinner');
+  await page.setViewportSize({width:320,height:640});
+  await page.locator('#quickGrams').focus();
+  const savePortion=page.getByRole('button',{name:'Записать порцию',exact:true});
+  await savePortion.scrollIntoViewIfNeeded();
+  await expect(savePortion).toBeInViewport({ratio:1});
+  await expect(page.locator('#toast.undo-toast')).toBeHidden();
+  await testInfo.attach('portion-320',{body:await page.locator('#sheetHost [role=dialog]').screenshot(),contentType:'image/png'});
+  await context.setOffline(true);
+  await page.getByRole('button',{name:'Записать порцию',exact:true}).click();
+  await expect(page.locator('#toast')).toContainText('Еда записана · Ужин');
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,125.5]);
+  await context.setOffline(false);
+  await page.reload();
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,125.5]);
+  await go(page,'nutrition');
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.locator('[data-act=editEntry]').click();
+  await page.locator('#portion').fill('200');
+  await page.locator('#portion').press('Tab');
+  const energy=page.locator('.impact-row').filter({has:page.getByText('Калории',{exact:true})});
+  await expect(energy.locator('.impact-topline')).toContainText(/115,5 → 299,5/);
+  await page.locator('[data-act=savePreview][data-status=consumed]').click();
+  expect((await state(page)).entries.map(e=>Math.round(e.macros.kcal*100))).toEqual([11546,18400]);
+  const backup=await state(page);
+  await page.locator('[data-act=meal][data-meal=dinner]').click();
+  await page.locator('[data-act=deleteEntry]').click();
+  expect((await state(page)).entries).toHaveLength(1);
+  await page.locator('#importFile').setInputFiles({name:'nutri-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
+  await page.locator('[data-act=confirmImport]').click();
+  expect((await state(page)).entries.map(e=>e.grams)).toEqual([125.5,200]);
+});
+
+test('weekly review excludes missing values and links to the exact day', async ({page},testInfo)=>{
+  await page.evaluate(({key,days})=>{
+    const snapshot=JSON.parse(localStorage.getItem(key));
+    snapshot.goals.customNorms={...snapshot.goals.customNorms,fiber_g:25,saturated_fat_g:20};
+    snapshot.entries=days.map(([date,fiber,fat,status],index)=>({
+      id:'weekly-'+index,date,meal:'lunch',time:'13:00',kind:'manual',name:'Обед '+index,status,grams:300,
+      macros:{kcal:500,p:20,f:22,c:48,fiber},nutrients:fat===null?{}:{saturated_fat_g:fat}
+    }));
+    localStorage.setItem(key,JSON.stringify(snapshot));
+  },{key:STORE,days:[[d(-1),10,23,'consumed'],[d(-2),28,7,'consumed'],[d(-3),null,null,'consumed'],[d(-4),10,30,'planned'],[d(0),null,null,'consumed']]});
+  await page.reload();
+  const focus=page.getByRole('region',{name:'Фокус дня'});
+  await focus.getByRole('button',{name:/Проверить записи/}).click();
+  await page.getByText(/В каких записях нет данных/).click();
+  await expect(page.getByRole('button',{name:/Обед 4 · Обед/})).toBeVisible();
+  await page.locator('[data-act=closeSheet]').click();
+  await go(page,'progress');
+  const weekly=page.getByRole('region',{name:'Итог за 7 дней'});
+  await expect(weekly).toContainText('1 из 2 дн. ниже ориентира');
+  await expect(weekly).toContainText('1 из 2 дн. выше лимита');
+  await page.setViewportSize({width:390,height:844});
+  await testInfo.attach('week-390',{body:await weekly.screenshot(),contentType:'image/png'});
+  await weekly.getByRole('button',{name:/Открыть дневник/}).first().click();
+  await expect(page.locator('[data-change=diaryDate]')).toHaveValue(d(-1));
 });
